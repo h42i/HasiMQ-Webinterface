@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="js/socket.io.min.js"></script>
+  <script src="js/jquery.min.js"></script>
+</head>
+<body>
+  <main>
+    <img src="img/logo.png" alt="^.^">
+    <h1>Sensoren</h1>
+    <section>
+      <article>
+        <p class="name">Temperatur</p>
+        <p class="badge" id="sensor-temp"> - </p>
+      </article>
+      <article>
+        <p class="name">Luftdruck</p>
+        <p class="badge" id="sensor-pres"> - </p>
+      </article>
+    </section>
+
+    <h1>Steckdosen</h1>
+    <section>
+      <article>
+        <p class="name">Blinkenvader</p>
+        <p class="badge" id="socket1" data-state='off'>-</p>
+      </article>
+      <article>
+        <p class="name">Lichtmast</p>
+        <p class="badge" id="socket2" data-state='off'>-</p>
+      </article>
+      <article>
+        <p class="name">Theke</p>
+        <p class="badge" id="socket3" data-state='off'>-</p>
+      </article>
+    </section>
+
+    <h1>Log</h1>
+    <section id="messages">
+    </section>
+    <p id="test">TEST</p>
+    <script>
+    $( document ).ready(function() {
+      var socket = io.connect('http://flutterpi.hasi:3000');
+      var messages = [];
+      socket.on('mqtt', function(data) {
+        var date = new Date();
+        messages.push('[' + date.toLocaleTimeString() + '] ' +
+                       data.topic + ': ' + data.payload)
+        if (messages.length > 5) {
+          messages.shift();
+        }
+
+        $('#messages').html(messages.join('<br>'));
+        console.log(data);
+
+        switch(data.topic) {
+          case 'hasi/sensors/outdoor/temperature':
+            $('#sensor-temp').html(data.payload + 'C');
+            break;
+          case 'hasi/sensors/outdoor/pressure':
+            $('#sensor-pres').html(data.payload + 'hPa');
+            break;
+          case 'hasi/sockets/1/state':
+            $('#socket1').html(data.payload);
+            $('#socket1').attr('data-state', data.payload);
+            break;
+          case 'hasi/sockets/2/state':
+            $('#socket2').html(data.payload);
+            $('#socket2').attr('data-state', data.payload);
+            break;
+          case 'hasi/sockets/3/state':
+            $('#socket3').html(data.payload);
+            $('#socket3').attr('data-state', data.payload);
+            break;
+
+          default: console.log('Could not match topic "' + data.topic + '"');
+        }
+      });
+
+      $('#socket1').click(function() {
+        state = (this.innerHTML == 'off') ? 'on' : 'off';
+        socket.emit('publish', { topic: 'hasi/sockets/1/set_state'
+                               , payload: state});
+      });
+      $('#socket2').click(function() {
+        state = (this.innerHTML == 'off') ? 'on' : 'off';
+        socket.emit('publish', { topic: 'hasi/sockets/2/set_state'
+                               , payload: state});
+      });
+      $('#socket3').click(function() {
+        state = (this.innerHTML == 'off') ? 'on' : 'off';
+        socket.emit('publish', { topic: 'hasi/sockets/3/set_state'
+                               , payload: state});
+      });
+      socket.on('connect', function() {
+        console.log('connected');
+        socket.emit('publish', {topic: 'hasi/events',
+                                payload: 'new websocket client'});
+      });
+    });
+    </script>
+  </main>
+</body>
+</html>
